@@ -1,0 +1,173 @@
+const express = require('express');
+const cors = require('cors');
+
+const app = express();
+const PORT = 5000;
+
+app.use(cors());
+app.use(express.json());
+
+const creatorId = 'admin123';
+let totalSupply = 1000000;
+const users = {
+  [creatorId]: totalSupply
+};
+
+// Get total supply
+app.get('/api/totalSupply', (req, res) => {
+  res.json({ totalSupply });
+});
+
+// Get balance of a user
+app.get('/api/balance/:id', (req, res) => {
+  const id = req.params.id;
+  const balance = users[id] || 0;
+  res.json({ balance });
+});
+
+// Create or login user (no auth, simple ID)
+app.post('/api/login', (req, res) => {
+  const { id } = req.body;
+  if (!users[id]) users[id] = 0;
+  res.json({ message: `Logged in as ${id}`, balance: users[id] });
+});
+
+// Transfer tokens
+app.post('/api/transfer', (req, res) => {
+  const { from, to, amount } = req.body;
+  if (!users[from]) return res.status(400).json({ error: 'Sender not found' });
+  if (users[from] < amount) return res.status(400).json({ error: 'Not enough tokens' });
+  users[from] -= amount;
+  users[to] = (users[to] || 0) + amount;
+  res.json({ message: ' Transfer successful!' });
+});
+
+// Mint tokens (creator only)
+app.post('/api/mint', (req, res) => {
+  const { by, to, amount } = req.body;
+  if (by !== creatorId) return res.status(403).json({ error: 'Only the creator can mint tokens' });
+  users[to] = (users[to] || 0) + amount;
+  totalSupply += amount;
+  res.json({ message: ` Minted ${amount} tokens to ${to}` });
+});
+
+app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+
+
+// === FRONTEND (React App.js) ===
+// Update your React code to interact with this backend
+
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const api = axios.create({ baseURL: 'http://localhost:5000/api' });
+
+const App = () => {
+  const [tokenName] = useState('EduCoin');
+  const [tokenSymbol] = useState('EDU');
+  const [loggedInUser, setLoggedInUser] = useState('');
+  const [balance, setBalance] = useState(0);
+  const [viewUserId, setViewUserId] = useState('');
+  const [viewBalance, setViewBalance] = useState(0);
+  const [totalSupply, setTotalSupply] = useState(0);
+  const [transferTo, setTransferTo] = useState('');
+  const [transferAmount, setTransferAmount] = useState(0);
+  const [mintTo, setMintTo] = useState('');
+  const [mintAmount, setMintAmount] = useState(0);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetchTotalSupply();
+  }, []);
+
+  const fetchTotalSupply = async () => {
+    const res = await api.get('/totalSupply');
+    setTotalSupply(res.data.totalSupply);
+  };
+
+  const login = async () => {
+    const res = await api.post('/login', { id: loggedInUser });
+    setBalance(res.data.balance);
+    fetchTotalSupply();
+    setMessage(res.data.message);
+  };
+
+  const checkBalance = async () => {
+    const res = await api.get(`/balance/${viewUserId}`);
+    setViewBalance(res.data.balance);
+  };
+
+  const handleTransfer = async () => {
+    try {
+      await api.post('/transfer', {
+        from: loggedInUser,
+        to: transferTo,
+        amount: Number(transferAmount)
+      });
+      setMessage(' Transfer successful!');
+      login(); // refresh balance
+    } catch (err) {
+      setMessage(` ${err.response.data.error}`);
+    }
+  };
+
+  const handleMint = async () => {
+    try {
+      await api.post('/mint', {
+        by: loggedInUser,
+        to: mintTo,
+        amount: Number(mintAmount)
+      });
+      setMessage(` Minted ${mintAmount} tokens to ${mintTo}`);
+      login(); // refresh balance
+      fetchTotalSupply();
+    } catch (err) {
+      setMessage(` ${err.response.data.error}`);
+    }
+  };
+
+  return (
+    <div className="p-4 max-w-xl mx-auto text-center">
+      <h1 className="text-2xl font-bold">{tokenName} ({tokenSymbol})</h1>
+      <p>Total Supply: {totalSupply}</p>
+
+      <div className="mt-4">
+        <input type="text" placeholder="Enter your ID" value={loggedInUser} onChange={e => setLoggedInUser(e.target.value)} />
+        <button onClick={login}>Login</button>
+      </div>
+
+      {loggedInUser && (
+        <>
+          <h2 className="mt-4">Welcome, {loggedInUser}</h2>
+          <p>Your Balance: {balance}</p>
+
+          <div className="mt-4">
+            <input type="text" placeholder="User ID to view" value={viewUserId} onChange={e => setViewUserId(e.target.value)} />
+            <button onClick={checkBalance}>Check Balance</button>
+            <p>Balance of {viewUserId || '...'}: {viewBalance}</p>
+          </div>
+
+          <div className="mt-4">
+            <h3>Transfer Tokens</h3>
+            <input type="text" placeholder="Receiver ID" value={transferTo} onChange={e => setTransferTo(e.target.value)} />
+            <input type="number" placeholder="Amount" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} />
+            <button onClick={handleTransfer}>Send</button>
+          </div>
+
+          {loggedInUser === 'admin123' && (
+            <div className="mt-4">
+              <h3>Mint Tokens (Creator Only)</h3>
+              <input type="text" placeholder="Recipient ID" value={mintTo} onChange={e => setMintTo(e.target.value)} />
+              <input type="number" placeholder="Amount" value={mintAmount} onChange={e => setMintAmount(e.target.value)} />
+              <button onClick={handleMint}>Mint Tokens</button>
+            </div>
+          )}
+
+          {message && <p className="mt-2 font-semibold">{message}</p>}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default App;
