@@ -51,11 +51,7 @@ app.post('/api/mint', (req, res) => {
   res.json({ message: `✅ Minted ${amount} tokens to ${to}` });
 });
 
-app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
-
-
-// === FRONTEND (React App.js) ===
-// Update your React code to interact with this backend
+app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
