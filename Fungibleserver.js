@@ -39,7 +39,7 @@ app.post('/api/transfer', (req, res) => {
   if (users[from] < amount) return res.status(400).json({ error: 'Not enough tokens' });
   users[from] -= amount;
   users[to] = (users[to] || 0) + amount;
-  res.json({ message: '✅ Transfer successful!' });
+  res.json({ message: ' Transfer successful!' });
 });
 
 // Mint tokens (creator only)
@@ -48,7 +48,7 @@ app.post('/api/mint', (req, res) => {
   if (by !== creatorId) return res.status(403).json({ error: 'Only the creator can mint tokens' });
   users[to] = (users[to] || 0) + amount;
   totalSupply += amount;
-  res.json({ message: `✅ Minted ${amount} tokens to ${to}` });
+  res.json({ message: ` Minted ${amount} tokens to ${to}` });
 });
 
 app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`
@@ -100,10 +100,10 @@ const App = () => {
         to: transferTo,
         amount: Number(transferAmount)
       });
-      setMessage('✅ Transfer successful!');
+      setMessage(' Transfer successful!');
       login(); // refresh balance
     } catch (err) {
-      setMessage(`❌ ${err.response.data.error}`);
+      setMessage(` ${err.response.data.error}`);
     }
   };
 
@@ -114,11 +114,11 @@ const App = () => {
         to: mintTo,
         amount: Number(mintAmount)
       });
-      setMessage(`✅ Minted ${mintAmount} tokens to ${mintTo}`);
+      setMessage(` Minted ${mintAmount} tokens to ${mintTo}`);
       login(); // refresh balance
       fetchTotalSupply();
     } catch (err) {
-      setMessage(`❌ ${err.response.data.error}`);
+      setMessage(` ${err.response.data.error}`);
     }
   };
 
